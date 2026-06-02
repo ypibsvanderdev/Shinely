@@ -135,6 +135,14 @@ function renderBookingArea() {
           <option>Large Business / Showroom (e.g. Slumberland) - Custom Quote</option>
         </select>
       </div>
+      <div class="bf-group"><label>Preferred Payment Method</label>
+        <select id="bPayment" required>
+          <option value="">Select...</option>
+          <option>Cash</option>
+          <option>Zelle</option>
+          <option>Apple Pay</option>
+        </select>
+      </div>
       <div class="bf-row">
         <div class="bf-group"><label>Preferred Date</label><input type="date" id="bDate" required/></div>
         <div class="bf-group"><label>Preferred Time</label>
@@ -148,7 +156,7 @@ function renderBookingArea() {
       </div>
       <div class="bf-group"><label>Notes (optional)</label><textarea id="bNotes" rows="2" placeholder="Gate codes, dogs, anything we should know..."></textarea></div>
       <button type="submit" class="btn-blue full" id="bookBtn">Send Booking Request</button>
-      <p class="bf-note">No payment now. We confirm first, then show up and do the work. Pay cash when we're done. ✌️</p>
+      <p class="bf-note">No payment now. We confirm first, then show up and do the work. Pay with Cash, Zelle, or Apple Pay when we're done. ✌️</p>
     </form>
     <div id="bookingSuccess" class="success-box hidden">
       <div style="font-size:2.5rem">🎉</div>
@@ -185,7 +193,7 @@ async function submitBooking(e) {
       interior:   interiorVal,
       date:       document.getElementById('bDate').value,
       time:       document.getElementById('bTime').value,
-      payment:    'cash',
+      payment:    document.getElementById('bPayment').value,
       notes:      document.getElementById('bNotes').value,
       userId:     currentUser?.uid || '',
     });
