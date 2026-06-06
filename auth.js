@@ -1,5 +1,5 @@
 // ============================================================
-//  SHINLEY AUTH + FIREBASE SYSTEM
+//  SHINELY AUTH + FIREBASE SYSTEM
 //  Firebase Auth (Google Sign-In) + Firestore
 // ============================================================
 
