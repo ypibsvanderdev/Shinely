@@ -404,7 +404,7 @@ calculateEstimate();
 
 
 // --- AI CHAT WIDGET LOGIC ---
-const GEMINI_API_KEY = "AQ." + "Ab8RN6LoUs2WBCy" + "UMWbrsyctEMP0z8a" + "-67Va5CO_HX" + "wLxkCWWQ";
+const GEMINI_API_KEY = "AQ.Ab8RN6LuO0itDofYj7VIJUGaQcif_oj34FuvN9lBOClADXHQbA";
 
 function toggleChatWindow() {
   document.getElementById('chatWindow')?.classList.toggle('hidden');
