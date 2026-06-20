@@ -20,8 +20,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Admin email (lowercase)
-const ADMIN_EMAIL = 'meqdad@gmail.com';
+// Admin emails (lowercase)
+const ADMIN_EMAILS = [
+  'meqdad@gmail.com',
+  'yahiamoon13@gmail.com',
+  'yahyadogar2012@gmail.com'
+];
 
 // --- AUTH STATE ---
 let currentUser = null;
@@ -30,7 +34,7 @@ let userProfile = null;
 function isAdmin(user) {
   if (!user) return false;
   const email = user.email || user.providerData?.[0]?.email || '';
-  return email.toLowerCase() === ADMIN_EMAIL;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
 function getSession() {
