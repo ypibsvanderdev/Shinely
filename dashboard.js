@@ -285,6 +285,10 @@ const TEMPLATES = {
     subject: 'Shinely — We Need to Reschedule',
     body: `Hi there,\n\nSomething came up on our end and we need to reschedule your window cleaning appointment. We're really sorry about this!\n\nCould you let us know some dates and times that work for you? You can reply here or text/call us at (224) 855-1121.\n\nWe'll make it right!\n\n— The Shinely Crew\n📍 St. Charles, IL`
   },
+  thankyou_photos: {
+    subject: '📸 Thanks for Sending Your Photos!',
+    body: `Hi there,\n\nThank you so much for sending over your photos — we really appreciate it! It's awesome to see the results and it helps us show off our work.\n\nIf you'd like to share your experience publicly, feel free to leave us a review on our website anytime!\n\nThanks again for trusting Shinely with your windows. Hope to see you again soon! ✨\n\n— The Shinely Crew\n📍 St. Charles, IL\n📞 (224) 855-1121`
+  },
   blank: { subject: '', body: '' }
 };
 
@@ -397,12 +401,34 @@ function renderPhotosView() {
           <span class="psc-sender">${p.name}</span>
           <span class="psc-email">(${p.email})</span>
         </div>
-        <span class="psc-date">${dateStr}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="psc-date">${dateStr}</span>
+          <button class="act-btn act-email" onclick="quickEmailPhoto('${p.email}','${p.name}')" title="Send thank you email">📧 Thank You</button>
+          <button class="act-btn act-delete" onclick="confirmDeletePhoto('${p.id}')" title="Delete this submission">🗑️ Delete</button>
+        </div>
       </div>
       ${p.note ? `<p class="psc-note">💬 ${p.note}</p>` : ''}
       <div class="psc-gallery">${galleryHtml}</div>`;
     list.appendChild(card);
   });
+}
+
+async function confirmDeletePhoto(photoId) {
+  if (!confirm('Delete this photo submission? This cannot be undone.')) return;
+  try {
+    await db.collection('photos').doc(photoId).delete();
+    cachedPhotos = cachedPhotos.filter(p => p.id !== photoId);
+    renderPhotosView();
+  } catch (err) {
+    console.error('Error deleting photo submission:', err);
+    alert('Failed to delete. Check your Firestore rules.');
+  }
+}
+
+function quickEmailPhoto(email, name) {
+  showTab('email', document.querySelector('[data-tab="email"]'));
+  document.getElementById('emailTo').value = email;
+  loadTemplate('thankyou_photos', name);
 }
 
 // --- RATINGS RENDER & ACTIONS ---
