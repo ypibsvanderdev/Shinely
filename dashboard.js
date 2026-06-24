@@ -27,27 +27,44 @@ onAuthReady(async (user) => {
 function doLogout() { signOut(); }
 
 async function loadAllData() {
-  try {
-    cachedBookings = await getBookings();
-    cachedUsers = await getAllUsers();
-    cachedPhotos = await getPhotos();
-    cachedRatings = await getRatings();
-    
-    // Hide loading, show content
-    document.getElementById('dashLoading').style.display = 'none';
-    document.getElementById('statsRow').style.display = '';
-    document.getElementById('tab-bookings').style.display = '';
+  // Load each collection independently so one failure doesn't break all
+  const results = await Promise.allSettled([
+    getBookings(),
+    getAllUsers(),
+    getPhotos(),
+    getRatings()
+  ]);
 
-    renderStats();
-    renderBookingsView();
-    renderCustomersView();
-    populateEmailPicker();
-    renderPhotosView();
-    renderRatingsView();
-  } catch (error) {
-    console.error('Error loading data:', error);
-    document.getElementById('dashLoading').innerHTML = '<p style="color:#ef4444">❌ Error loading data. Check Firebase config.</p>';
+  if (results[0].status === 'fulfilled') cachedBookings = results[0].value;
+  else console.error('Bookings load error:', results[0].reason);
+
+  if (results[1].status === 'fulfilled') cachedUsers = results[1].value;
+  else console.error('Users load error:', results[1].reason);
+
+  if (results[2].status === 'fulfilled') cachedPhotos = results[2].value;
+  else { console.warn('Photos load error (may need Firestore index):', results[2].reason); cachedPhotos = []; }
+
+  if (results[3].status === 'fulfilled') cachedRatings = results[3].value;
+  else { console.warn('Ratings load error (may need Firestore index):', results[3].reason); cachedRatings = []; }
+
+  // Show dashboard regardless
+  document.getElementById('dashLoading').style.display = 'none';
+  document.getElementById('statsRow').style.display = '';
+  document.getElementById('tab-bookings').style.display = '';
+
+  // If bookings/users failed, show error note but still render
+  if (results[0].status === 'rejected' && results[1].status === 'rejected') {
+    document.getElementById('dashLoading').style.display = '';
+    document.getElementById('dashLoading').innerHTML = '<p style="color:#ef4444">❌ Error loading data. Check Firebase/Firestore rules and config.</p>';
+    return;
   }
+
+  renderStats();
+  renderBookingsView();
+  renderCustomersView();
+  populateEmailPicker();
+  renderPhotosView();
+  renderRatingsView();
 }
 
 // --- TABS ---
@@ -311,13 +328,35 @@ function exportBookings() {
 
 // --- FIRESTORE: PHOTOS & RATINGS ---
 async function getPhotos() {
-  const snapshot = await db.collection('photos').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await db.collection('photos').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    // If index is missing or collection is new/empty, fall back to unordered
+    console.warn('Photos orderBy failed, falling back to unordered:', err.message);
+    try {
+      const snapshot = await db.collection('photos').get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e2) {
+      return [];
+    }
+  }
 }
 
 async function getRatings() {
-  const snapshot = await db.collection('ratings').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await db.collection('ratings').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    // If index is missing or collection is new/empty, fall back to unordered
+    console.warn('Ratings orderBy failed, falling back to unordered:', err.message);
+    try {
+      const snapshot = await db.collection('ratings').get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e2) {
+      return [];
+    }
+  }
 }
 
 async function deleteRating(ratingId) {

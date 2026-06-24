@@ -110,8 +110,14 @@ async function addBooking(data) {
 }
 
 async function getBookings() {
-  const snapshot = await db.collection('bookings').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await db.collection('bookings').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn('Bookings orderBy failed, falling back:', err.message);
+    const snapshot = await db.collection('bookings').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
 }
 
 async function updateBookingStatus(bookingId, status) {
@@ -124,8 +130,14 @@ async function deleteBooking(bookingId) {
 
 // --- FIRESTORE: USERS ---
 async function getAllUsers() {
-  const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
-  return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn('Users orderBy failed, falling back:', err.message);
+    const snapshot = await db.collection('users').get();
+    return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  }
 }
 
 async function deleteUser(uid) {
