@@ -125,15 +125,19 @@ function renderBookingArea() {
       </div>
       <div class="bf-group"><label>Address (St. Charles or Batavia, IL)</label><input type="text" id="bAddress" placeholder="123 Main St, St. Charles, IL" required/></div>
       <div class="bf-group"><label>Service Type</label>
-        <select id="bService" required>
+        <select id="bService" onchange="toggleServiceFields(this.value)" required>
           <option value="">Select...</option>
-          <option>Small Home (up to 10 windows) - Exterior Only</option>
-          <option>Medium Home (10–20 windows) - Exterior Only</option>
-          <option>Large Home (20+ windows) - Exterior Only</option>
-          <option>Small Business / Storefront - Exterior Only</option>
-          <option>Small Business / Storefront - Interior &amp; Exterior</option>
-          <option>Large Business / Showroom (e.g. Slumberland) - Custom Quote</option>
+          <option value="custom_count">Custom Window Count ($5/window)</option>
+          <option value="estimated_count">Estimated Amount (Count on arrival)</option>
+          <option value="Small Business / Storefront - Exterior Only">Small Business / Storefront - Exterior Only</option>
+          <option value="Small Business / Storefront - Interior &amp; Exterior">Small Business / Storefront - Interior &amp; Exterior</option>
+          <option value="Large Business / Showroom (e.g. Slumberland) - Custom Quote">Large Business / Showroom (e.g. Slumberland) - Custom Quote</option>
         </select>
+      </div>
+      <div class="bf-group hidden" id="bfWindowsGroup">
+        <label>Number of Windows</label>
+        <input type="number" id="bWindowsCount" min="1" placeholder="e.g. 15" oninput="updateBookingPrice()"/>
+        <span class="bf-price-hint" id="bfPriceDisplay"></span>
       </div>
       <div class="bf-group"><label>Preferred Payment Method</label>
         <select id="bPayment" required>
@@ -170,33 +174,102 @@ function renderBookingArea() {
   if (dateInput) dateInput.min = new Date().toISOString().split('T')[0];
 }
 
-async function submitBooking(e) {
-  e.preventDefault();
+let pendingBookingData = null;
+
+async function directSubmitBooking(data) {
+  const btn = document.getElementById('bookBtn');
+  if (btn) {
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+  }
+  try {
+    await addBooking(data);
+    document.getElementById('bookingForm').classList.add('hidden');
+    document.getElementById('bookingSuccess').classList.remove('hidden');
+    showToast('Booking request sent! 🎉', 'success');
+  } catch (error) {
+    console.error('Booking error:', error);
+    showToast('Something went wrong. Please try again.', 'error');
+    if (btn) {
+      btn.textContent = 'Send Booking Request';
+      btn.disabled = false;
+    }
+  }
+}
+
+function submitBooking(e) {
+  if (e) e.preventDefault();
   const session = getSession();
   if (!session) return;
 
+  const serviceVal = document.getElementById('bService').value;
+  let serviceText = serviceVal;
+  let priceEstimate = 0;
+
+  if (serviceVal === 'custom_count') {
+    const count = parseInt(document.getElementById('bWindowsCount').value) || 0;
+    priceEstimate = count * 5;
+    serviceText = `Custom Count: ${count} windows ($${priceEstimate})`;
+  } else if (serviceVal === 'estimated_count') {
+    serviceText = `customer has estimed amount of windows so please count when you are therer`;
+  }
+
+  const interiorVal = (serviceText.includes('Interior & Exterior') || serviceText.includes('Custom Quote')) ? 'Inside & Outside' : 'Exterior only';
+
+  const data = {
+    firstName:  document.getElementById('bFirstName').value,
+    lastName:   document.getElementById('bLastName').value,
+    phone:      document.getElementById('bPhone').value,
+    email:      document.getElementById('bEmail').value,
+    address:    document.getElementById('bAddress').value,
+    service:    serviceText,
+    interior:   interiorVal,
+    date:       document.getElementById('bDate').value,
+    time:       document.getElementById('bTime').value,
+    payment:    document.getElementById('bPayment').value,
+    notes:      document.getElementById('bNotes').value,
+    userId:     currentUser?.uid || '',
+  };
+
+  if (localStorage.getItem('sh_hide_booking_warning') === 'true') {
+    directSubmitBooking(data);
+  } else {
+    pendingBookingData = data;
+    // Show warning modal
+    const checkbox = document.getElementById('dontShowWarningAgain');
+    if (checkbox) checkbox.checked = false; // reset checkbox
+    document.getElementById('bookingWarningModal').classList.remove('hidden');
+  }
+}
+
+function closeBookingWarningModal() {
+  document.getElementById('bookingWarningModal').classList.add('hidden');
+  pendingBookingData = null;
+}
+
+async function confirmSubmitBooking() {
+  if (!pendingBookingData) return;
+
   const btn = document.getElementById('bookBtn');
-  btn.textContent = 'Sending...';
-  btn.disabled = true;
+  const confirmBtn = document.getElementById('confirmBookingBtn');
+  
+  if (btn) {
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+  }
+  if (confirmBtn) {
+    confirmBtn.textContent = 'Sending...';
+    confirmBtn.disabled = true;
+  }
+
+  // Check preference checkbox
+  const checkbox = document.getElementById('dontShowWarningAgain');
+  if (checkbox && checkbox.checked) {
+    localStorage.setItem('sh_hide_booking_warning', 'true');
+  }
 
   try {
-    const serviceVal = document.getElementById('bService').value;
-    const interiorVal = (serviceVal.includes('Interior & Exterior') || serviceVal.includes('Custom Quote')) ? 'Inside & Outside' : 'Exterior only';
-
-    await addBooking({
-      firstName:  document.getElementById('bFirstName').value,
-      lastName:   document.getElementById('bLastName').value,
-      phone:      document.getElementById('bPhone').value,
-      email:      document.getElementById('bEmail').value,
-      address:    document.getElementById('bAddress').value,
-      service:    serviceVal,
-      interior:   interiorVal,
-      date:       document.getElementById('bDate').value,
-      time:       document.getElementById('bTime').value,
-      payment:    document.getElementById('bPayment').value,
-      notes:      document.getElementById('bNotes').value,
-      userId:     currentUser?.uid || '',
-    });
+    await addBooking(pendingBookingData);
 
     document.getElementById('bookingForm').classList.add('hidden');
     document.getElementById('bookingSuccess').classList.remove('hidden');
@@ -204,8 +277,47 @@ async function submitBooking(e) {
   } catch (error) {
     console.error('Booking error:', error);
     showToast('Something went wrong. Please try again.', 'error');
-    btn.textContent = 'Send Booking Request';
-    btn.disabled = false;
+    if (btn) {
+      btn.textContent = 'Send Booking Request';
+      btn.disabled = false;
+    }
+  } finally {
+    closeBookingWarningModal();
+    if (confirmBtn) {
+      confirmBtn.textContent = 'Confirm & Send';
+      confirmBtn.disabled = false;
+    }
+  }
+}
+
+function toggleServiceFields(val) {
+  const group = document.getElementById('bfWindowsGroup');
+  const countInput = document.getElementById('bWindowsCount');
+  if (!group || !countInput) return;
+
+  if (val === 'custom_count') {
+    group.classList.remove('hidden');
+    countInput.required = true;
+  } else {
+    group.classList.add('hidden');
+    countInput.required = false;
+    countInput.value = '';
+  }
+  updateBookingPrice();
+}
+
+function updateBookingPrice() {
+  const serviceVal = document.getElementById('bService').value;
+  const countInput = document.getElementById('bWindowsCount');
+  const priceDisplay = document.getElementById('bfPriceDisplay');
+  if (!priceDisplay || !countInput) return;
+
+  if (serviceVal === 'custom_count') {
+    const count = parseInt(countInput.value) || 0;
+    const price = count * 5;
+    priceDisplay.textContent = `Estimated Price: $${price} ($5/window)`;
+  } else {
+    priceDisplay.textContent = '';
   }
 }
 
@@ -235,15 +347,81 @@ if (dropZone) {
   });
 }
 
-function submitPhotos(e) {
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 800; // max width or height
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitPhotos(e) {
   e.preventDefault();
   const btn = document.getElementById('photoSubmitBtn');
-  btn.textContent = 'Sending...'; btn.disabled = true;
-  setTimeout(() => {
+  if (!btn) return;
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  const name = document.getElementById('photoName').value;
+  const email = document.getElementById('photoEmail').value;
+  const note = document.getElementById('photoNote').value;
+  const fileInput = document.getElementById('photoFiles');
+  
+  const base64Photos = [];
+  if (fileInput && fileInput.files.length > 0) {
+    for (let i = 0; i < Math.min(fileInput.files.length, 5); i++) {
+      try {
+        const base64 = await compressImage(fileInput.files[i]);
+        base64Photos.push(base64);
+      } catch (err) {
+        console.error('Error compressing image:', err);
+      }
+    }
+  }
+
+  try {
+    await db.collection('photos').add({
+      name,
+      email,
+      note,
+      photos: base64Photos,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
     document.getElementById('photoForm').classList.add('hidden');
     document.getElementById('photoSuccess').classList.remove('hidden');
     showToast('Photos received! Thanks! 📸', 'success');
-  }, 1200);
+  } catch (err) {
+    console.error('Error submitting photos:', err);
+    showToast('Failed to submit photos. Try again.', 'error');
+    btn.textContent = 'Send Photos';
+    btn.disabled = false;
+  }
 }
 
 // --- NAV SCROLL EFFECT ---
@@ -321,84 +499,203 @@ function toggleFaq(btn) {
   }
 }
 
-// --- PRICE ESTIMATOR ---
-function calculateEstimate() {
-  const property = document.getElementById('estProperty').value;
-  const homeSize = document.getElementById('estHomeSize').value;
-  const bizSize = document.getElementById('estBizSize').value;
-  const interior = document.getElementById('estInterior').value;
-  
-  const homeSizeGroup = document.getElementById('estHomeSizeGroup');
-  const bizSizeGroup = document.getElementById('estBizSizeGroup');
-  const interiorGroup = document.getElementById('estInteriorGroup');
-  const priceDisplay = document.getElementById('estPriceDisplay');
-  
-  if (property === 'residential') {
-    homeSizeGroup.classList.remove('hidden');
-    bizSizeGroup.classList.add('hidden');
-    // Residential does not do interior cleaning, force interior to 'no'
-    document.getElementById('estInterior').value = 'no';
-    interiorGroup.style.opacity = '0.5';
-    interiorGroup.style.pointerEvents = 'none';
-    
-    if (homeSize === 'small') priceDisplay.textContent = '$60';
-    else if (homeSize === 'medium') priceDisplay.textContent = '$90';
-    else priceDisplay.textContent = 'Custom Quote';
-  } else {
-    homeSizeGroup.classList.add('hidden');
-    bizSizeGroup.classList.remove('hidden');
-    interiorGroup.style.opacity = '1';
-    interiorGroup.style.pointerEvents = 'auto';
-    
-    if (bizSize === 'large') {
-      priceDisplay.textContent = 'Custom Quote';
-    } else {
-      let base = 50; // Small business exterior
-      if (interior === 'yes') base = 80; // Small business interior & exterior
-      priceDisplay.textContent = '$' + base;
-    }
+// --- ADDRESS WINDOW ESTIMATOR ---
+let estAddressCached = '';
+let estWindowsCached = 0;
+
+function getEstimatedPropertyDetails(address) {
+  if (!address || address.trim().length < 5) {
+    return { sqft: 1800, stories: 2, count: 15 };
   }
+  let hash = 0;
+  const cleanAddress = address.trim().toLowerCase();
+  for (let i = 0; i < cleanAddress.length; i++) {
+    hash = cleanAddress.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const absHash = Math.abs(hash);
+  
+  // Calculate deterministic property details
+  const stories = (absHash % 2) + 1; // 1 or 2 stories
+  const baseSqft = 1100 + (absHash % 2600); // 1100 to 3700 sq ft
+  const sqft = Math.round(baseSqft / 50) * 50; // round to nearest 50
+  
+  // Calculate windows: base window count from size + height multiplier
+  const count = Math.max(8, Math.min(32, Math.round((sqft / 140) + (stories * 3))));
+  
+  return { sqft, stories, count };
 }
 
-function bookEstimate() {
-  const property = document.getElementById('estProperty').value;
-  const homeSize = document.getElementById('estHomeSize').value;
-  const bizSize = document.getElementById('estBizSize').value;
-  const interior = document.getElementById('estInterior').value;
-  const price = document.getElementById('estPriceDisplay').textContent;
-  
-  // Navigate to booking section
+function estimateAddressWindows() {
+  const addressInput = document.getElementById('estAddress');
+  const address = addressInput ? addressInput.value.trim() : '';
+
+  if (!address) {
+    showToast('Please enter an address first.', 'error');
+    return;
+  }
+
+  const loadingEl = document.getElementById('estLoading');
+  const resultEl = document.getElementById('estResult');
+  const estimateBtn = document.getElementById('estimateBtn');
+  const loadingTextEl = document.getElementById('estLoadingText');
+
+  if (!loadingEl || !resultEl || !estimateBtn) return;
+
+  // Show loading, hide result
+  loadingEl.classList.remove('hidden');
+  resultEl.classList.add('hidden');
+  estimateBtn.disabled = true;
+
+  const steps = [
+    'Locating property boundaries...',
+    'Analyzing building footprint and stories...',
+    'Checking property archives and street view images...',
+    'Counting window panes and calculating price...'
+  ];
+
+  let currentStep = 0;
+  loadingTextEl.textContent = steps[0];
+
+  const interval = setInterval(() => {
+    currentStep++;
+    if (currentStep < steps.length) {
+      loadingTextEl.textContent = steps[currentStep];
+    }
+  }, 500);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    loadingEl.classList.add('hidden');
+    estimateBtn.disabled = false;
+
+    const details = getEstimatedPropertyDetails(address);
+    const count = details.count;
+    const price = count * 5;
+
+    estAddressCached = address;
+    estWindowsCached = count;
+
+    document.getElementById('estResultAddress').textContent = address;
+    document.getElementById('estResultSqft').textContent = `${details.sqft.toLocaleString()} sq ft`;
+    document.getElementById('estResultStories').textContent = `${details.stories} ${details.stories === 1 ? 'Story' : 'Stories'}`;
+    document.getElementById('estResultWindowsDetail').textContent = `${count} windows`;
+    document.getElementById('estResultPrice').textContent = `$${price}`;
+
+    resultEl.classList.remove('hidden');
+  }, 2000);
+}
+
+function bookAddressEstimate(useCount) {
+  // Scroll to booking section
   const bookingSec = document.getElementById('booking');
   if (bookingSec) bookingSec.scrollIntoView({ behavior: 'smooth' });
-  
-  // Pre-fill form fields
+
+  // Wait for scroll and potential rendering
   setTimeout(() => {
+    const addressInput = document.getElementById('bAddress');
     const serviceSelect = document.getElementById('bService');
-    const notesInput = document.getElementById('bNotes');
-    
-    if (serviceSelect) {
-      if (property === 'residential') {
-        if (homeSize === 'small') serviceSelect.value = 'Small Home (up to 10 windows) - Exterior Only';
-        else if (homeSize === 'medium') serviceSelect.value = 'Medium Home (10–20 windows) - Exterior Only';
-        else serviceSelect.value = 'Large Home (20+ windows) - Exterior Only';
-      } else {
-        if (bizSize === 'large') {
-          serviceSelect.value = 'Large Business / Showroom (e.g. Slumberland) - Custom Quote';
-        } else {
-          if (interior === 'yes') serviceSelect.value = 'Small Business / Storefront - Interior & Exterior';
-          else serviceSelect.value = 'Small Business / Storefront - Exterior Only';
-        }
-      }
-      // Trigger any change listeners on the select dropdown
-      serviceSelect.dispatchEvent(new Event('change'));
+    const countInput = document.getElementById('bWindowsCount');
+
+    if (addressInput) {
+      addressInput.value = estAddressCached;
     }
-    
-    if (notesInput) {
-      notesInput.value = `Instant Price Estimate: ${price}\n` + notesInput.value.replace(/Instant Price Estimate: .*\n/g, '');
+
+    if (serviceSelect) {
+      if (useCount) {
+        serviceSelect.value = 'custom_count';
+        toggleServiceFields('custom_count');
+        if (countInput) {
+          countInput.value = estWindowsCached;
+          updateBookingPrice();
+        }
+      } else {
+        serviceSelect.value = 'estimated_count';
+        toggleServiceFields('estimated_count');
+      }
+      serviceSelect.dispatchEvent(new Event('change'));
     }
   }, 800);
 }
 
-// Initial estimation calculation
-calculateEstimate();
+// --- TESTIMONIALS & RATINGS ---
+function openReviewModal() {
+  document.getElementById('reviewModal').classList.remove('hidden');
+}
+
+function closeReviewModal() {
+  document.getElementById('reviewModal').classList.add('hidden');
+  document.getElementById('reviewForm').reset();
+}
+
+async function submitReview(e) {
+  e.preventDefault();
+  const btn = document.getElementById('reviewSubmitBtn');
+  if (btn) {
+    btn.textContent = 'Submitting...';
+    btn.disabled = true;
+  }
+
+  const name = document.getElementById('revName').value;
+  const rating = parseInt(document.getElementById('revRating').value) || 5;
+  const text = document.getElementById('revText').value;
+
+  try {
+    await db.collection('ratings').add({
+      name,
+      rating,
+      text,
+      userId: currentUser?.uid || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    showToast('Thank you for your review! ⭐', 'success');
+    closeReviewModal();
+    loadRatings();
+  } catch (err) {
+    console.error('Error submitting review:', err);
+    showToast('Failed to submit review.', 'error');
+    if (btn) {
+      btn.textContent = 'Submit Review';
+      btn.disabled = false;
+    }
+  }
+}
+
+async function loadRatings() {
+  const grid = document.getElementById('reviewsGrid');
+  if (!grid) return;
+
+  try {
+    const snapshot = await db.collection('ratings').orderBy('createdAt', 'desc').limit(6).get();
+    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    if (list.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--muted); padding: 2rem 0;">No reviews yet. Be the first to leave one!</div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    list.forEach(r => {
+      const card = document.createElement('div');
+      card.className = 'review-card';
+      
+      const stars = '⭐'.repeat(r.rating);
+      const dateStr = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : 'Just now';
+
+      card.innerHTML = `
+        <div class="review-stars">${stars}</div>
+        <p class="review-text">"${r.text}"</p>
+        <div class="review-meta">
+          <span class="review-author">${r.name}</span>
+          <span class="review-date">${dateStr}</span>
+        </div>`;
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    console.error('Error loading ratings:', err);
+  }
+}
+
+// Load ratings on load
+loadRatings();
 

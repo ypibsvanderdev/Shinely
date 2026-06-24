@@ -460,11 +460,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 
-/* --- PRICE ESTIMATOR --- */
+/* --- PRICE ESTIMATOR (Address Window Estimator) --- */
 .estimator-box {
   background: var(--white);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 2.2rem;
   max-width: 800px;
   margin: 0 auto 3rem auto;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
@@ -482,46 +482,98 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
 }
-.estimator-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-.est-group {
+.estimator-form-address {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: stretch;
 }
-.est-group label {
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--dark);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+@media (max-width: 600px) {
+  .estimator-form-address {
+    flex-direction: column;
+  }
 }
-.est-group select {
-  padding: 0.75rem 1rem;
+.est-input-wrap {
+  flex: 1;
+  position: relative;
+}
+.est-input {
+  width: 100%;
+  padding: 14px 16px;
   border-radius: 8px;
   border: 1.5px solid rgba(15, 23, 42, 0.08);
   background-color: var(--bg);
   color: var(--navy);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 1rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
-.est-group select:focus {
+.est-input:focus {
   border-color: var(--blue);
+  background-color: var(--white);
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.08);
+}
+.est-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 0;
+  gap: 1.2rem;
+  text-align: center;
+  border-top: 1.5px dashed rgba(15, 23, 42, 0.08);
+}
+.est-loading-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3.5px solid var(--border);
+  border-top: 3.5px solid var(--blue);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+.est-loading-text {
+  font-weight: 700;
+  color: var(--blue);
+  font-size: 1rem;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 .est-result {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 1.5rem;
+  padding-top: 1.8rem;
   border-top: 1.5px dashed rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.est-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
+}
+.est-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.est-address-display {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 1.05rem;
+}
+.est-count-display {
+  font-size: 0.9rem;
+  color: var(--mid);
+  font-weight: 500;
+}
+.est-count-display strong {
+  color: var(--blue);
+  font-weight: 700;
 }
 .est-price-container {
   display: flex;
@@ -539,6 +591,116 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   color: var(--blue);
   font-family: 'Nunito', sans-serif;
 }
+.est-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.est-actions .btn-blue, .est-actions .btn-outline {
+  flex: 1;
+  min-width: 200px;
+  text-align: center;
+}
+
+/* --- BOOKING WARNING MODAL --- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  transition: opacity 0.25s ease;
+}
+.modal-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  position: relative;
+  transform: scale(0.95);
+  transition: transform 0.25s ease;
+}
+.modal-overlay.hidden {
+  display: none !important;
+}
+.modal-close-btn {
+  position: absolute; top: 18px; right: 18px;
+  background: none; border: none; font-size: 1.2rem;
+  color: var(--muted); cursor: pointer; transition: color 0.15s;
+}
+.modal-close-btn:hover { color: var(--navy); }
+.modal-warning-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.modal-warning-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+.modal-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--navy);
+  margin-bottom: 4px;
+  text-align: center;
+}
+.modal-text {
+  font-size: 0.95rem;
+  color: #7f1d1d; /* Dark red text */
+  line-height: 1.6;
+  margin-bottom: 24px;
+  background: #fffbeb; /* Amber light bg */
+  border: 1.5px solid #fef3c7;
+  border-left: 5px solid #f59e0b; /* Amber accent */
+  padding: 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+}
+.modal-actions {
+  display: flex; gap: 12px; justify-content: flex-end;
+}
+.modal-btn {
+  padding: 12px 22px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.18s;
+  border: none;
+  font-family: 'Nunito', sans-serif;
+}
+.modal-btn-cancel {
+  background: var(--bg);
+  color: var(--mid);
+  border: 1.5px solid var(--border);
+}
+.modal-btn-cancel:hover {
+  background: var(--border);
+}
+.modal-btn-confirm {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.2);
+}
+.modal-btn-confirm:hover {
+  background: #1d4ed8;
+}
+
+/* Custom UI fields in form */
+.bf-price-hint {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--blue);
+  margin-top: 4px;
+}
+
 
 /* --- FAQ SECTION --- */
 .faq {
@@ -664,5 +826,64 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   font-family: inherit;
 }
 
-
-
+/* --- CUSTOMER REVIEWS --- */
+.reviews {
+  padding: 80px 0;
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+.review-card {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.review-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+.review-stars {
+  color: #fb923c; /* orange stars */
+  font-size: 1.15rem;
+}
+.review-text {
+  font-size: 0.93rem;
+  color: var(--dark);
+  line-height: 1.6;
+  flex-grow: 1;
+  font-style: italic;
+}
+.review-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  font-size: 0.82rem;
+}
+.review-author {
+  font-weight: 700;
+  color: var(--navy);
+}
+.review-date {
+  color: var(--muted);
+}

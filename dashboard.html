@@ -27,6 +27,8 @@
   <nav class="sb-nav">
     <a href="#" class="sb-link active" data-tab="bookings" onclick="showTab('bookings',this)">📅 Bookings</a>
     <a href="#" class="sb-link" data-tab="customers" onclick="showTab('customers',this)">👥 Customers</a>
+    <a href="#" class="sb-link" data-tab="photos" onclick="showTab('photos',this)">📷 Photos Received</a>
+    <a href="#" class="sb-link" data-tab="ratings" onclick="showTab('ratings',this)">⭐ Ratings Manager</a>
     <a href="#" class="sb-link" data-tab="email" onclick="showTab('email',this)">📧 Send Email</a>
   </nav>
   <div class="sb-bottom">
@@ -148,6 +150,61 @@
       <div class="ec-actions">
         <button class="btn-send" onclick="sendEmail()">📧 Open in Email App</button>
         <p class="ec-note">This opens your email app pre-filled and ready to send.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTOS TAB -->
+  <div id="tab-photos" class="dash-tab hidden" style="display:none">
+    <div class="tab-toolbar">
+      <h2>Photos Received from Customers</h2>
+    </div>
+    <div class="photos-list" id="photosList"></div>
+    <div id="noPhotos" class="empty-state hidden">
+      <p>📷 No photos received yet.</p>
+    </div>
+  </div>
+
+  <!-- RATINGS TAB -->
+  <div id="tab-ratings" class="dash-tab hidden" style="display:none">
+    <div class="tab-toolbar">
+      <h2>Ratings &amp; Reviews Manager</h2>
+    </div>
+    
+    <div class="ratings-dash-layout">
+      <!-- Ratings List -->
+      <div>
+        <h3 style="color:#fff; margin-bottom:16px;">Reviews List</h3>
+        <div class="ratings-list-admin" id="adminRatingsList"></div>
+        <div id="noAdminRatings" class="empty-state hidden">
+          <p>⭐ No ratings received yet.</p>
+        </div>
+      </div>
+
+      <!-- Add Rating Form -->
+      <div class="manual-rating-card-form">
+        <h3 style="color:#fff; margin-bottom:18px;">Add Rating Manually</h3>
+        <form id="manualRatingForm" onsubmit="addManualRating(event)" style="display:flex; flex-direction:column; gap:14px;">
+          <div class="ec-group">
+            <label>Customer Name</label>
+            <input type="text" id="manName" placeholder="e.g. John D." required style="background:var(--sidebar); border:1px solid var(--border); color:#fff; padding:10px; border-radius:8px; width:100%;"/>
+          </div>
+          <div class="ec-group">
+            <label>Rating</label>
+            <select id="manRating" required style="background:var(--sidebar); border:1px solid var(--border); color:#fff; padding:10px; border-radius:8px; width:100%;">
+              <option value="5">⭐⭐⭐⭐⭐ (5 Stars)</option>
+              <option value="4">⭐⭐⭐⭐ (4 Stars)</option>
+              <option value="3">⭐⭐⭐ (3 Stars)</option>
+              <option value="2">⭐⭐ (2 Stars)</option>
+              <option value="1">⭐ (1 Star)</option>
+            </select>
+          </div>
+          <div class="ec-group">
+            <label>Review Text</label>
+            <textarea id="manText" rows="4" placeholder="Type review description..." required style="background:var(--sidebar); border:1px solid var(--border); color:#fff; padding:10px; border-radius:8px; width:100%; resize:vertical;"></textarea>
+          </div>
+          <button type="submit" class="btn-send" style="padding:10px; font-size:0.92rem; width:100%;">⭐ Add Rating</button>
+        </form>
       </div>
     </div>
   </div>

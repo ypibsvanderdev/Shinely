@@ -5,6 +5,8 @@
 let currentFilter = 'all';
 let cachedBookings = [];
 let cachedUsers = [];
+let cachedPhotos = [];
+let cachedRatings = [];
 
 // --- INIT WITH FIREBASE AUTH ---
 onAuthReady(async (user) => {
@@ -28,6 +30,8 @@ async function loadAllData() {
   try {
     cachedBookings = await getBookings();
     cachedUsers = await getAllUsers();
+    cachedPhotos = await getPhotos();
+    cachedRatings = await getRatings();
     
     // Hide loading, show content
     document.getElementById('dashLoading').style.display = 'none';
@@ -38,6 +42,8 @@ async function loadAllData() {
     renderBookingsView();
     renderCustomersView();
     populateEmailPicker();
+    renderPhotosView();
+    renderRatingsView();
   } catch (error) {
     console.error('Error loading data:', error);
     document.getElementById('dashLoading').innerHTML = '<p style="color:#ef4444">❌ Error loading data. Check Firebase config.</p>';
@@ -53,6 +59,8 @@ function showTab(name, el) {
   if (el) el.classList.add('active');
   if (name === 'customers') renderCustomersView();
   if (name === 'email') populateEmailPicker();
+  if (name === 'photos') renderPhotosView();
+  if (name === 'ratings') renderRatingsView();
   // Close mobile sidebar
   document.getElementById('sidebar')?.classList.remove('sb-open');
   return false;
@@ -90,12 +98,16 @@ function renderBookingsView() {
   if (!list.length) return;
 
   list.forEach(b => {
+    let serviceDisplay = b.service || '—';
+    if (b.service && b.service.includes('estimed')) {
+      serviceDisplay = `<span class="badge badge-estimate-warn" title="${b.service}">⚠️ Count on Arrival</span>`;
+    }
     const row = document.createElement('tr');
     row.innerHTML = `
       <td><strong>${b.firstName || ''} ${b.lastName || ''}</strong></td>
       <td>${b.email || '—'}</td>
       <td>${b.phone || '—'}</td>
-      <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.service||'—'}</td>
+      <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${serviceDisplay}</td>
       <td>${b.date || '—'}</td>
       <td>${b.time || '—'}</td>
       <td>${b.payment || 'cash'}</td>
@@ -159,12 +171,17 @@ function viewBooking(id) {
   const fmt = (v) => v || '—';
   const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString() : (b.createdAt ? new Date(b.createdAt).toLocaleString() : '—');
 
+  let serviceDisplay = b.service || '—';
+  if (b.service && b.service.includes('estimed')) {
+    serviceDisplay = `<span class="badge-estimate-warn-large">${b.service}</span>`;
+  }
+
   document.getElementById('detailContent').innerHTML = `
     <div class="detail-row"><strong>Name</strong><span>${b.firstName} ${b.lastName}</span></div>
     <div class="detail-row"><strong>Email</strong><span>${b.email}</span></div>
     <div class="detail-row"><strong>Phone</strong><span>${b.phone}</span></div>
     <div class="detail-row"><strong>Address</strong><span>${b.address}</span></div>
-    <div class="detail-row"><strong>Service</strong><span>${b.service}</span></div>
+    <div class="detail-row"><strong>Service</strong><span>${serviceDisplay}</span></div>
     <div class="detail-row"><strong>Interior</strong><span>${b.interior}</span></div>
     <div class="detail-row"><strong>Date</strong><span>${b.date}</span></div>
     <div class="detail-row"><strong>Time</strong><span>${b.time}</span></div>
@@ -290,4 +307,151 @@ function exportBookings() {
   a.download = `shinely-bookings-${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// --- FIRESTORE: PHOTOS & RATINGS ---
+async function getPhotos() {
+  const snapshot = await db.collection('photos').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function getRatings() {
+  const snapshot = await db.collection('ratings').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function deleteRating(ratingId) {
+  await db.collection('ratings').doc(ratingId).delete();
+}
+
+// --- PHOTOS RENDER ---
+function renderPhotosView() {
+  const list = document.getElementById('photosList');
+  const noEl = document.getElementById('noPhotos');
+  if (!list) return;
+  list.innerHTML = '';
+  noEl.classList.toggle('hidden', cachedPhotos.length > 0);
+  if (!cachedPhotos.length) return;
+
+  cachedPhotos.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'photo-submission-card';
+    
+    const dateStr = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : (p.createdAt ? new Date(p.createdAt).toLocaleString() : '—');
+    
+    let galleryHtml = '';
+    if (p.photos && p.photos.length > 0) {
+      p.photos.forEach((imgSrc, idx) => {
+        galleryHtml += `
+          <div class="psc-photo-item">
+            <img src="${imgSrc}" alt="Customer photo"/>
+            <a href="${imgSrc}" download="photo-${p.name.replace(/\s+/g, '_')}-${idx}.jpg" class="psc-photo-download-btn">📥 Download</a>
+          </div>`;
+      });
+    } else {
+      galleryHtml = '<span style="color:var(--muted)">No photos uploaded</span>';
+    }
+
+    card.innerHTML = `
+      <div class="psc-header">
+        <div>
+          <span class="psc-sender">${p.name}</span>
+          <span class="psc-email">(${p.email})</span>
+        </div>
+        <span class="psc-date">${dateStr}</span>
+      </div>
+      ${p.note ? `<p class="psc-note">💬 ${p.note}</p>` : ''}
+      <div class="psc-gallery">${galleryHtml}</div>`;
+    list.appendChild(card);
+  });
+}
+
+// --- RATINGS RENDER & ACTIONS ---
+function renderRatingsView() {
+  const list = document.getElementById('adminRatingsList');
+  const noEl = document.getElementById('noAdminRatings');
+  if (!list) return;
+  list.innerHTML = '';
+  noEl.classList.toggle('hidden', cachedRatings.length > 0);
+  if (!cachedRatings.length) return;
+
+  cachedRatings.forEach(r => {
+    const card = document.createElement('div');
+    card.className = 'admin-rating-card';
+    
+    const dateStr = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—');
+    const stars = '⭐'.repeat(r.rating);
+
+    card.innerHTML = `
+      <div class="arc-header">
+        <div class="arc-stars">${stars}</div>
+        <div class="arc-meta">
+          <span class="arc-author">${r.name}</span>
+          <span class="arc-date">${dateStr}</span>
+        </div>
+      </div>
+      <p class="arc-text">"${r.text}"</p>
+      <div class="arc-actions">
+        <button class="arc-delete-btn" onclick="confirmDeleteRating('${r.id}')">🗑️ Delete</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+async function confirmDeleteRating(ratingId) {
+  if (!confirm('Are you sure you want to delete this rating?')) return;
+  try {
+    await deleteRating(ratingId);
+    cachedRatings = cachedRatings.filter(r => r.id !== ratingId);
+    renderRatingsView();
+  } catch (err) {
+    console.error('Error deleting rating:', err);
+    alert('Failed to delete rating.');
+  }
+}
+
+async function addManualRating(e) {
+  e.preventDefault();
+  const name = document.getElementById('manName').value.trim();
+  const rating = parseInt(document.getElementById('manRating').value) || 5;
+  const text = document.getElementById('manText').value.trim();
+
+  const form = document.getElementById('manualRatingForm');
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.textContent = 'Adding...';
+    submitBtn.disabled = true;
+  }
+
+  try {
+    const docRef = await db.collection('ratings').add({
+      name,
+      rating,
+      text,
+      userId: 'admin',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Update local cache and view
+    cachedRatings.unshift({
+      id: docRef.id,
+      name,
+      rating,
+      text,
+      userId: 'admin',
+      createdAt: { toDate: () => new Date() }
+    });
+
+    renderRatingsView();
+    form.reset();
+    alert('Manual rating added successfully! ⭐');
+  } catch (err) {
+    console.error('Error adding manual rating:', err);
+    alert('Failed to add manual rating.');
+  } finally {
+    if (submitBtn) {
+      submitBtn.textContent = '⭐ Add Rating';
+      submitBtn.disabled = false;
+    }
+  }
 }
