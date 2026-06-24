@@ -347,32 +347,27 @@ if (dropZone) {
   });
 }
 
-function compressImage(file) {
-  return new Promise((resolve) => {
+// maxDim: max width or height in px. quality: JPEG quality 0-1.
+function compressImage(file, maxDim = 800, quality = 0.7) {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onerror = reject;
     reader.onload = (event) => {
       const img = new Image();
+      img.onerror = reject;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 800; // max width or height
         let width = img.width;
         let height = img.height;
         if (width > height) {
-          if (width > maxDim) {
-            height *= maxDim / width;
-            width = maxDim;
-          }
+          if (width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; }
         } else {
-          if (height > maxDim) {
-            width *= maxDim / height;
-            height = maxDim;
-          }
+          if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; }
         }
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.src = event.target.result;
     };
@@ -392,11 +387,13 @@ async function submitPhotos(e) {
   const note = document.getElementById('photoNote').value;
   const fileInput = document.getElementById('photoFiles');
   
+  // Firestore documents max ~1MB. Use 480px / 0.45 quality ≈ 20-50KB per photo.
+  const MAX_PHOTOS = 3;
   const base64Photos = [];
   if (fileInput && fileInput.files.length > 0) {
-    for (let i = 0; i < Math.min(fileInput.files.length, 5); i++) {
+    for (let i = 0; i < Math.min(fileInput.files.length, MAX_PHOTOS); i++) {
       try {
-        const base64 = await compressImage(fileInput.files[i]);
+        const base64 = await compressImage(fileInput.files[i], 480, 0.45);
         base64Photos.push(base64);
       } catch (err) {
         console.error('Error compressing image:', err);
@@ -418,7 +415,8 @@ async function submitPhotos(e) {
     showToast('Photos received! Thanks! 📸', 'success');
   } catch (err) {
     console.error('Error submitting photos:', err);
-    showToast('Failed to submit photos. Try again.', 'error');
+    const msg = err.code ? `Error: ${err.code}` : 'Failed to submit photos. Try again.';
+    showToast(msg, 'error');
     btn.textContent = 'Send Photos';
     btn.disabled = false;
   }
