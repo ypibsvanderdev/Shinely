@@ -116,7 +116,7 @@ function renderBookingsView() {
 
   list.forEach(b => {
     let serviceDisplay = b.service || '—';
-    if (b.service && b.service.includes('estimed')) {
+    if (b.service && b.service.includes('estimated amount')) {
       serviceDisplay = `<span class="badge badge-estimate-warn" title="${b.service}">⚠️ Count on Arrival</span>`;
     }
     const row = document.createElement('tr');
@@ -189,7 +189,7 @@ function viewBooking(id) {
   const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString() : (b.createdAt ? new Date(b.createdAt).toLocaleString() : '—');
 
   let serviceDisplay = b.service || '—';
-  if (b.service && b.service.includes('estimed')) {
+  if (b.service && b.service.includes('estimated amount')) {
     serviceDisplay = `<span class="badge-estimate-warn-large">${b.service}</span>`;
   }
 
@@ -421,6 +421,10 @@ function renderRatingsView() {
     const dateStr = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—');
     const stars = '⭐'.repeat(r.rating);
 
+    const photoHtml = r.photo
+      ? `<div style="margin:10px 0;"><img src="${r.photo}" alt="Review photo" style="max-width:100%;max-height:160px;border-radius:8px;object-fit:cover;display:block;margin-bottom:6px;"/><a href="${r.photo}" download="review-${r.name.replace(/\s+/g,'_')}.jpg" class="psc-photo-download-btn" style="font-size:0.82rem;">📥 Download Photo</a></div>`
+      : '';
+
     card.innerHTML = `
       <div class="arc-header">
         <div class="arc-stars">${stars}</div>
@@ -430,6 +434,7 @@ function renderRatingsView() {
         </div>
       </div>
       <p class="arc-text">"${r.text}"</p>
+      ${photoHtml}
       <div class="arc-actions">
         <button class="arc-delete-btn" onclick="confirmDeleteRating('${r.id}')">🗑️ Delete</button>
       </div>`;

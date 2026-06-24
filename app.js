@@ -211,7 +211,7 @@ function submitBooking(e) {
     priceEstimate = count * 5;
     serviceText = `Custom Count: ${count} windows ($${priceEstimate})`;
   } else if (serviceVal === 'estimated_count') {
-    serviceText = `customer has estimed amount of windows so please count when you are therer`;
+    serviceText = `Customer has estimated amount of windows — please count when you are there`;
   }
 
   const interiorVal = (serviceText.includes('Interior & Exterior') || serviceText.includes('Custom Quote')) ? 'Inside & Outside' : 'Exterior only';
@@ -625,6 +625,24 @@ function openReviewModal() {
 function closeReviewModal() {
   document.getElementById('reviewModal').classList.add('hidden');
   document.getElementById('reviewForm').reset();
+  document.getElementById('revPhotoPreview').innerHTML = '';
+  document.getElementById('revFileDrop').classList.remove('rev-drop-has-file');
+}
+
+function handleReviewPhoto(input) {
+  const preview = document.getElementById('revPhotoPreview');
+  const drop = document.getElementById('revFileDrop');
+  preview.innerHTML = '';
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.cssText = 'max-height:120px;border-radius:8px;object-fit:cover;box-shadow:0 2px 8px rgba(0,0,0,0.10);';
+    preview.appendChild(img);
+    drop.classList.add('rev-drop-has-file');
+  };
+  reader.readAsDataURL(input.files[0]);
 }
 
 async function submitReview(e) {
@@ -639,11 +657,23 @@ async function submitReview(e) {
   const rating = parseInt(document.getElementById('revRating').value) || 5;
   const text = document.getElementById('revText').value;
 
+  // Compress photo if provided
+  let photoBase64 = null;
+  const fileInput = document.getElementById('revPhotoFile');
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    try {
+      photoBase64 = await compressImage(fileInput.files[0]);
+    } catch (err) {
+      console.warn('Photo compression failed:', err);
+    }
+  }
+
   try {
     await db.collection('ratings').add({
       name,
       rating,
       text,
+      photo: photoBase64 || null,
       userId: currentUser?.uid || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -681,10 +711,14 @@ async function loadRatings() {
       
       const stars = '⭐'.repeat(r.rating);
       const dateStr = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : 'Just now';
+      const photoHtml = r.photo
+        ? `<div class="review-photo-wrap"><img src="${r.photo}" alt="Customer photo" class="review-photo"/></div>`
+        : '';
 
       card.innerHTML = `
         <div class="review-stars">${stars}</div>
         <p class="review-text">"${r.text}"</p>
+        ${photoHtml}
         <div class="review-meta">
           <span class="review-author">${r.name}</span>
           <span class="review-date">${dateStr}</span>

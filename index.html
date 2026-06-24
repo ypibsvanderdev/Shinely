@@ -473,6 +473,18 @@
         <label>Your Review</label>
         <textarea id="revText" rows="4" placeholder="How did we do? Were your windows sparkling?" required style="background: var(--bg); border: 1.5px solid var(--border); padding: 11px 13px; border-radius: 8px; font-family: inherit; font-size: 0.92rem; outline: none; width: 100%; resize: vertical;"></textarea>
       </div>
+      <div class="pf-group">
+        <label>Add a Photo (optional)</label>
+        <div class="file-drop rev-file-drop" id="revFileDrop" onclick="document.getElementById('revPhotoFile').click()">
+          <div class="file-drop-inner">
+            <span class="file-icon">📷</span>
+            <span>Click to add a photo of your windows</span>
+            <span class="file-hint">JPG or PNG – 1 photo max</span>
+          </div>
+          <input type="file" id="revPhotoFile" accept="image/*" style="display:none" onchange="handleReviewPhoto(this)"/>
+        </div>
+        <div id="revPhotoPreview" class="file-preview" style="margin-top:8px;"></div>
+      </div>
       <div class="modal-actions" style="margin-top: 10px;">
         <button type="button" class="modal-btn modal-btn-cancel" onclick="closeReviewModal()">Cancel</button>
         <button type="submit" class="modal-btn modal-btn-confirm" id="reviewSubmitBtn">Submit Review</button>
