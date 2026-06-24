@@ -289,6 +289,10 @@ const TEMPLATES = {
     subject: '📸 Thanks for Sending Your Photos!',
     body: `Hi there,\n\nThank you so much for sending over your photos — we really appreciate it! It's awesome to see the results and it helps us show off our work.\n\nIf you'd like to share your experience publicly, feel free to leave us a review on our website anytime!\n\nThanks again for trusting Shinely with your windows. Hope to see you again soon! ✨\n\n— The Shinely Crew\n📍 St. Charles, IL\n📞 (224) 855-1121`
   },
+  thankyou_review: {
+    subject: '⭐ Thank You for Your Review!',
+    body: `Hi there,\n\nWe just saw your review and honestly it made our day! Thank you so much — feedback like yours really means a lot to us and helps our small crew keep doing what we love.\n\nIf there's anything we could have done better or if you ever need us again, don't hesitate to reach out anytime!\n\nWe hope to see you again next time. Thanks for trusting Shinely! 🪟✨\n\n— The Shinely Crew\n📍 St. Charles, IL\n📞 (224) 855-1121`
+  },
   blank: { subject: '', body: '' }
 };
 
@@ -462,10 +466,17 @@ function renderRatingsView() {
       <p class="arc-text">"${r.text}"</p>
       ${photoHtml}
       <div class="arc-actions">
+        ${r.email ? `<button class="act-btn act-email" onclick="quickEmailReview('${r.email}','${r.name}')" title="Reply to this reviewer">📧 Reply</button>` : '<span style="font-size:0.78rem;color:var(--muted);font-style:italic;">No email provided</span>'}
         <button class="arc-delete-btn" onclick="confirmDeleteRating('${r.id}')">🗑️ Delete</button>
       </div>`;
     list.appendChild(card);
   });
+}
+
+function quickEmailReview(email, name) {
+  showTab('email', document.querySelector('[data-tab="email"]'));
+  document.getElementById('emailTo').value = email;
+  loadTemplate('thankyou_review', name);
 }
 
 async function confirmDeleteRating(ratingId) {

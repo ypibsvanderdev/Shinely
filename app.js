@@ -625,6 +625,8 @@ function closeReviewModal() {
   document.getElementById('reviewForm').reset();
   document.getElementById('revPhotoPreview').innerHTML = '';
   document.getElementById('revFileDrop').classList.remove('rev-drop-has-file');
+  const emailEl = document.getElementById('revEmail');
+  if (emailEl) emailEl.value = '';
 }
 
 function handleReviewPhoto(input) {
@@ -652,6 +654,7 @@ async function submitReview(e) {
   }
 
   const name = document.getElementById('revName').value;
+  const email = (document.getElementById('revEmail')?.value || '').trim();
   const rating = parseInt(document.getElementById('revRating').value) || 5;
   const text = document.getElementById('revText').value;
 
@@ -669,6 +672,7 @@ async function submitReview(e) {
   try {
     await db.collection('ratings').add({
       name,
+      email: email || null,
       rating,
       text,
       photo: photoBase64 || null,
